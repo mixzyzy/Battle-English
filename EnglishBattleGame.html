@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Battle Arena - Grade 4 (AI Powered)</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f0f4f8;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .pattern-bg {
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        @keyframes bounce-sm {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .animate-bounce-custom {
+            animation: bounce-sm 2s infinite;
+        }
+        
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+
+        @keyframes blink-red {
+            0%, 100% { background-color: rgba(239, 68, 68, 0); }
+            50% { background-color: rgba(239, 68, 68, 0.08); } 
+        }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .animate-danger { animation: blink-red 1s infinite; }
+        .animate-shake { animation: shake 0.5s infinite; }
+        .animate-spin-slow { animation: spin 3s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- ICONS (Embedded for Offline Safety) ---
+        const Icons = {
+            Trophy: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>,
+            Check: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+            X: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+            Swords: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" y1="19" x2="19" y2="13"/><line x1="16" y1="16" x2="20" y2="20"/><line x1="19" y1="21" x2="21" y2="19"/><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"/><line x1="5" y1="14" x2="9" y2="18"/><line x1="7" y1="17" x2="4" y2="20"/><line x1="3" y1="19" x2="5" y2="21"/></svg>,
+            AlertCircle: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
+            Clock: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            Home: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+            Pause: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="4" height="16" x="6" y="4"/><rect width="4" height="16" x="14" y="4"/></svg>,
+            Play: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+            Square: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>,
+            Settings: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+            Save: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+            RotateCcw: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>,
+            Edit: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>,
+            ChevronLeft: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>,
+            Sparkles: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 5h4"/><path d="M18 3v4"/><path d="M22 5h-4"/><path d="M5 21v-4"/><path d="M9 19h-4"/><path d="M18 21v-4"/><path d="M22 19h-4"/></svg>,
+            Loader: (props) => <svg {...props} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        };
+
+        // --- ASSETS: CHARACTER ICONS ---
+        const CHARACTERS = [
+            { id: 'lion', icon: '🦁', name: 'Lion' },
+            { id: 'tiger', icon: '🐯', name: 'Tiger' },
+            { id: 'bear', icon: '🐻', name: 'Bear' },
+            { id: 'fox', icon: '🦊', name: 'Fox' },
+            { id: 'panda', icon: '🐼', name: 'Panda' },
+            { id: 'koala', icon: '🐨', name: 'Koala' },
+            { id: 'pig', icon: '🐷', name: 'Pig' },
+            { id: 'frog', icon: '🐸', name: 'Frog' },
+            { id: 'octopus', icon: '🐙', name: 'Octopus' },
+        ];
+
+        // --- DATA: DEFAULT VOCAB QUESTIONS ---
+        const DEFAULT_VOCAB_QUESTIONS = [
+            { id: 1, type: 'mc', q: "I have a long nose.", options: ["Snake", "Elephant", "Lion", "Cat"], a: "Elephant" },
+            { id: 2, type: 'mc', q: "I am the King of the Jungle.", options: ["Mouse", "Rabbit", "Lion", "Cow"], a: "Lion" },
+            { id: 3, type: 'mc', q: "I love to eat bananas.", options: ["Monkey", "Shark", "Dog", "Bird"], a: "Monkey" },
+            { id: 4, type: 'mc', q: "I give you milk.", options: ["Pig", "Cow", "Chicken", "Fish"], a: "Cow" },
+            { id: 5, type: 'tf', q: "A fish can fly.", options: ["True", "False"], a: "False" },
+            { id: 6, type: 'mc', q: "I am yellow and curved.", options: ["Apple", "Banana", "Grape", "Berry"], a: "Banana" },
+            { id: 7, type: 'mc', q: "I am red and have seeds outside.", options: ["Strawberry", "Lemon", "Melon", "Orange"], a: "Strawberry" },
+            { id: 8, type: 'mc', q: "Pizza comes from...", options: ["Japan", "Italy", "China", "Peru"], a: "Italy" },
+            { id: 9, type: 'tf', q: "Lemons are sweet.", options: ["True", "False"], a: "False" },
+            { id: 10, type: 'mc', q: "You eat me with milk for breakfast.", options: ["Soup", "Salad", "Cereal", "Steak"], a: "Cereal" },
+            { id: 11, type: 'mc', q: "I fly airplanes.", options: ["Doctor", "Pilot", "Chef", "Teacher"], a: "Pilot" },
+            { id: 12, type: 'mc', q: "I cook food in a restaurant.", options: ["Nurse", "Chef", "Cop", "Artist"], a: "Chef" },
+            { id: 13, type: 'mc', q: "I help sick people.", options: ["Doctor", "Driver", "Farmer", "Singer"], a: "Doctor" },
+            { id: 14, type: 'mc', q: "I teach students.", options: ["Teacher", "Actor", "Baker", "Vet"], a: "Teacher" },
+            { id: 15, type: 'mc', q: "I put out fires.", options: ["Firefighter", "Dancer", "Pilot", "Clown"], a: "Firefighter" },
+            { id: 16, type: 'mc', q: "You use me to see.", options: ["Ears", "Nose", "Eyes", "Hands"], a: "Eyes" },
+            { id: 17, type: 'mc', q: "You use me to walk.", options: ["Legs", "Hair", "Mouth", "Arm"], a: "Legs" },
+            { id: 18, type: 'mc', q: "You wear a hat on me.", options: ["Foot", "Head", "Knee", "Back"], a: "Head" },
+            { id: 19, type: 'tf', q: "You have 10 fingers.", options: ["True", "False"], a: "True" },
+            { id: 20, type: 'mc', q: "I pump blood inside you.", options: ["Brain", "Heart", "Stomach", "Bone"], a: "Heart" },
+            { id: 21, type: 'mc', q: "You kick a ball into a goal.", options: ["Tennis", "Soccer", "Golf", "Judo"], a: "Soccer" },
+            { id: 22, type: 'mc', q: "You hit a ball with a bat.", options: ["Baseball", "Swimming", "Running", "Yoga"], a: "Baseball" },
+            { id: 23, type: 'mc', q: "You swim in a pool.", options: ["Swimming", "Hiking", "Boxing", "Skiing"], a: "Swimming" },
+            { id: 24, type: 'mc', q: "You bounce an orange ball.", options: ["Basketball", "Hockey", "Surfing", "Ballet"], a: "Basketball" },
+            { id: 25, type: 'tf', q: "Soccer is played with hands.", options: ["True", "False"], a: "False" },
+            { id: 26, type: 'mc', q: "Sushi comes from...", options: ["USA", "Japan", "Brazil", "India"], a: "Japan" },
+            { id: 27, type: 'mc', q: "Kangaroos live in...", options: ["Australia", "France", "Canada", "Spain"], a: "Australia" },
+            { id: 28, type: 'mc', q: "The Eiffel Tower is in...", options: ["Paris", "Tokyo", "London", "Rome"], a: "Paris" },
+            { id: 29, type: 'mc', q: "Big vs ___", options: ["Huge", "Small", "Tall", "Fat"], a: "Small" },
+            { id: 30, type: 'mc', q: "Happy vs ___", options: ["Sad", "Glad", "Fun", "Nice"], a: "Sad" },
+            { id: 31, type: 'tf', q: "Ice is hot.", options: ["True", "False"], a: "False" },
+            { id: 32, type: 'tf', q: "Grass is green.", options: ["True", "False"], a: "True" },
+            { id: 33, type: 'tf', q: "Birds have wings.", options: ["True", "False"], a: "True" },
+            { id: 34, type: 'mc', q: "What color is a banana?", options: ["Blue", "Yellow", "Purple", "Pink"], a: "Yellow" },
+            { id: 35, type: 'mc', q: "Where do fish live?", options: ["Water", "Tree", "Car", "Bed"], a: "Water" },
+            { id: 36, type: 'tf', q: "A cat says 'Moo'.", options: ["True", "False"], a: "False" },
+            { id: 37, type: 'mc', q: "Which one is a drink?", options: ["Bread", "Milk", "Cake", "Apple"], a: "Milk" },
+            { id: 38, type: 'mc', q: "You sleep in a...", options: ["Kitchen", "Bed", "Car", "School"], a: "Bed" },
+            { id: 39, type: 'tf', q: "Sun comes up in morning.", options: ["True", "False"], a: "True" },
+            { id: 40, type: 'mc', q: "Up vs ___", options: ["Left", "Down", "Right", "On"], a: "Down" },
+            { id: 41, type: 'mc', q: "What do you wear on your feet?", options: ["Gloves", "Hat", "Shoes", "Scarf"], a: "Shoes" },
+            { id: 42, type: 'mc', q: "Which animal says 'Quack'?", options: ["Dog", "Duck", "Cat", "Lion"], a: "Duck" },
+            { id: 43, type: 'mc', q: "Red + Yellow = ?", options: ["Green", "Blue", "Orange", "Black"], a: "Orange" },
+            { id: 44, type: 'tf', q: "Spiders have 6 legs.", options: ["True", "False"], a: "False" },
+            { id: 45, type: 'mc', q: "You drive a...", options: ["Bike", "Car", "Skate", "Boat"], a: "Car" },
+            { id: 46, type: 'mc', q: "The sky is...", options: ["Blue", "Green", "Red", "Brown"], a: "Blue" },
+            { id: 47, type: 'mc', q: "Fast vs ___", options: ["Quick", "Slow", "Run", "Stop"], a: "Slow" },
+            { id: 48, type: 'mc', q: "Which one is cold?", options: ["Fire", "Sun", "Soup", "Snow"], a: "Snow" },
+            { id: 49, type: 'mc', q: "Doctors work in a...", options: ["School", "Hospital", "Farm", "Park"], a: "Hospital" },
+            { id: 50, type: 'mc', q: "How many days in a week?", options: ["5", "6", "7", "8"], a: "7" },
+        ];
+
+        // --- DATA: EXTRA MATH QUESTIONS ---
+        const MATH_QUESTIONS = [
+            { id: 'm1', type: 'mc', q: "5 + 3 = ?", options: ["7", "8", "9", "10"], a: "8" },
+            { id: 'm2', type: 'mc', q: "10 - 4 = ?", options: ["5", "6", "4", "7"], a: "6" },
+            { id: 'm3', type: 'mc', q: "2 x 3 = ?", options: ["5", "6", "8", "9"], a: "6" },
+            { id: 'm4', type: 'mc', q: "8 ÷ 2 = ?", options: ["2", "4", "3", "5"], a: "4" },
+            { id: 'm5', type: 'mc', q: "15 + 5 = ?", options: ["10", "15", "20", "25"], a: "20" },
+            { id: 'm6', type: 'mc', q: "12 - 3 = ?", options: ["9", "8", "10", "7"], a: "9" },
+            { id: 'm7', type: 'mc', q: "4 x 4 = ?", options: ["12", "14", "16", "18"], a: "16" },
+            { id: 'm8', type: 'mc', q: "20 ÷ 2 = ?", options: ["5", "10", "15", "20"], a: "10" },
+            { id: 'm9', type: 'mc', q: "7 + 6 = ?", options: ["12", "13", "14", "11"], a: "13" },
+            { id: 'm10', type: 'mc', q: "18 - 5 = ?", options: ["12", "13", "14", "15"], a: "13" },
+            { id: 'm11', type: 'mc', q: "5 x 5 = ?", options: ["20", "25", "30", "15"], a: "25" },
+            { id: 'm12', type: 'mc', q: "14 ÷ 2 = ?", options: ["6", "7", "8", "5"], a: "7" },
+            { id: 'm13', type: 'mc', q: "9 + 9 = ?", options: ["16", "17", "18", "19"], a: "18" },
+            { id: 'm14', type: 'mc', q: "30 - 10 = ?", options: ["10", "20", "30", "40"], a: "20" },
+            { id: 'm15', type: 'mc', q: "3 x 3 = ?", options: ["6", "9", "12", "3"], a: "9" },
+        ];
+
+        // Shuffle utility
+        const shuffleArray = (array) => {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        };
+
+        // NEW: Function to shuffle options within MC questions to prevent muscle memory
+        const prepareDeck = (sourceDeck) => {
+            // 1. Shuffle the order of questions
+            const shuffledDeck = shuffleArray([...sourceDeck]);
+            // 2. Shuffle the options within each MC question
+            return shuffledDeck.map(q => {
+                if (q.type === 'mc') {
+                    return { ...q, options: shuffleArray([...q.options]) };
+                }
+                return q;
+            });
+        };
+
+        const App = () => {
+            // Game State
+            const [gameStatus, setGameStatus] = useState('intro'); 
+            const [roundScores, setRoundScores] = useState({ A: 0, B: 0 });
+            const [tugPosition, setTugPosition] = useState(50); 
+            const [winner, setWinner] = useState(null);
+            const [winReason, setWinReason] = useState(null);
+            const [isGamePointRound, setIsGamePointRound] = useState(false);
+            const [isPaused, setIsPaused] = useState(false);
+            
+            // Customizable Data State
+            const [vocabQuestions, setVocabQuestions] = useState(JSON.parse(JSON.stringify(DEFAULT_VOCAB_QUESTIONS)));
+            // UPDATED: Default Duration 2:15
+            const [roundDurationMin, setRoundDurationMin] = useState(2); // Minutes
+            const [roundDurationSec, setRoundDurationSec] = useState(15); // Seconds
+
+            // AI Generation State
+            const [showAiModal, setShowAiModal] = useState(false);
+            const [aiTopic, setAiTopic] = useState('');
+            const [isGenerating, setIsGenerating] = useState(false);
+
+            // Character Selection State
+            const [teamCharA, setTeamCharA] = useState(null);
+            const [teamCharB, setTeamCharB] = useState(null);
+            const [selectionTurn, setSelectionTurn] = useState('A'); 
+            
+            // Score Logic
+            const [correctCountA, setCorrectCountA] = useState(0);
+            const [correctCountB, setCorrectCountB] = useState(0);
+            
+            // Question State
+            const [questionsA, setQuestionsA] = useState([]);
+            const [questionsB, setQuestionsB] = useState([]);
+            const [currentQA, setCurrentQA] = useState(null);
+            const [currentQB, setCurrentQB] = useState(null);
+            
+            // Timer State
+            const [timeLeftA, setTimeLeftA] = useState(12);
+            const [timeLeftB, setTimeLeftB] = useState(12);
+            const [roundTimeLeft, setRoundTimeLeft] = useState(135); // 2:15 in seconds
+            
+            // Feedback State
+            const [feedbackA, setFeedbackA] = useState(null); 
+            const [feedbackB, setFeedbackB] = useState(null);
+            const [lockoutA, setLockoutA] = useState(false);
+            const [lockoutB, setLockoutB] = useState(false);
+
+            const WIN_TARGET = 3; 
+            const MAX_TIME = 12;
+
+            // --- GAME LOGIC ---
+
+            const startSelection = () => {
+                setGameStatus('select_char');
+                setSelectionTurn('A');
+                setTeamCharA(null);
+                setTeamCharB(null);
+                setIsPaused(false);
+            };
+
+            const handleCharSelect = (char) => {
+                if (selectionTurn === 'A') {
+                    setTeamCharA(char);
+                    setSelectionTurn('B');
+                } else {
+                    setTeamCharB(char);
+                    setTimeout(() => startGame(), 500);
+                }
+            };
+
+            const startGame = () => {
+                setRoundScores({ A: 0, B: 0 });
+                startRound({ A: 0, B: 0 });
+            };
+
+            const startRound = (currentScores = roundScores) => {
+                const isGamePoint = currentScores.A === WIN_TARGET - 1 || currentScores.B === WIN_TARGET - 1;
+                setIsGamePointRound(isGamePoint);
+
+                let deck = [...vocabQuestions];
+                if (isGamePoint) {
+                    deck = [...deck, ...MATH_QUESTIONS];
+                }
+
+                // UPDATED: Use prepareDeck instead of simple shuffleArray to randomize options too
+                setQuestionsA(prepareDeck(deck));
+                setQuestionsB(prepareDeck(deck));
+                
+                setTugPosition(50);
+                setGameStatus('playing');
+                setWinner(null);
+                setWinReason(null);
+                setFeedbackA(null);
+                setFeedbackB(null);
+                setLockoutA(false);
+                setLockoutB(false);
+                setTimeLeftA(MAX_TIME);
+                setTimeLeftB(MAX_TIME);
+                setRoundTimeLeft(roundDurationMin * 60 + roundDurationSec); 
+                setCorrectCountA(0);
+                setCorrectCountB(0);
+                setIsPaused(false);
+            };
+
+            // --- AI GENERATION ---
+            const generateQuestionsWithGemini = async () => {
+                if (!aiTopic) return;
+                setIsGenerating(true);
+                const apiKey = ""; // Provided by execution environment
+                
+                try {
+                    const prompt = `Generate 15 questions for a 4th grade English vocabulary game about "${aiTopic}". 
+                    Mix of Multiple Choice (type: 'mc') and True/False (type: 'tf'). 
+                    For 'mc', provide 4 distinct options. For 'tf', options are ["True", "False"].
+                    The output must be a VALID JSON array of objects. 
+                    Each object structure: { "id": number, "type": "mc"|"tf", "q": "question text", "options": ["opt1", "opt2"...], "a": "correct answer" }.
+                    Do not wrap in markdown code blocks. Just return the raw JSON array.`;
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }]
+                        })
+                    });
+
+                    const data = await response.json();
+                    let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    
+                    // Cleanup markdown if present
+                    if (text) {
+                        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const newQuestions = JSON.parse(text);
+                        const formattedQuestions = newQuestions.map((q, i) => ({
+                            ...q,
+                            id: Date.now() + i
+                        }));
+
+                        setVocabQuestions(formattedQuestions);
+                        setShowAiModal(false);
+                        setAiTopic('');
+                        alert(`✨ Success! Generated ${formattedQuestions.length} questions about "${aiTopic}".`);
+                    } else {
+                        throw new Error("No text generated");
+                    }
+                } catch (error) {
+                    console.error("AI Generation Error:", error);
+                    alert("Failed to generate questions. Please try again.");
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+
+            // --- CONTROL FUNCTIONS ---
+            const goHome = () => {
+                setGameStatus('intro');
+                setIsPaused(false);
+            };
+
+            const togglePause = () => {
+                setIsPaused(!isPaused);
+            };
+
+            const stopGame = () => {
+                if (teamCharA && teamCharB) {
+                    startGame();
+                } else {
+                    goHome();
+                }
+            };
+
+            // --- SETTINGS & RESET LOGIC ---
+            const resetSettings = () => {
+                setVocabQuestions(JSON.parse(JSON.stringify(DEFAULT_VOCAB_QUESTIONS)));
+                // UPDATED: Reset to 2:15
+                setRoundDurationMin(2);
+                setRoundDurationSec(15);
+                alert("All settings and questions have been reset to default!");
+            };
+
+            const handleDurationChange = (type, value) => {
+                let newMin = roundDurationMin;
+                let newSec = roundDurationSec;
+
+                if (type === 'min') {
+                    newMin = Math.max(0, parseInt(value) || 0);
+                } else {
+                    newSec = parseInt(value) || 0;
+                }
+
+                const totalSeconds = newMin * 60 + newSec;
+                const MAX_SECONDS = 300; // 5 minutes
+
+                if (totalSeconds > MAX_SECONDS) {
+                    alert("Maximum duration is 5:00 minutes!");
+                    setRoundDurationMin(5);
+                    setRoundDurationSec(0);
+                    return;
+                }
+
+                setRoundDurationMin(newMin);
+                setRoundDurationSec(newSec);
+            };
+
+            const handleQuestionEdit = (id, field, value, optionIndex = null) => {
+                const newQuestions = vocabQuestions.map(q => {
+                    if (q.id === id) {
+                        if (field === 'options' && optionIndex !== null) {
+                            const newOptions = [...q.options];
+                            newOptions[optionIndex] = value;
+                            return { ...q, options: newOptions };
+                        }
+                        return { ...q, [field]: value };
+                    }
+                    return q;
+                });
+                setVocabQuestions(newQuestions);
+            };
+
+            // --- TIMERS ---
+            useEffect(() => {
+                if (gameStatus !== 'playing' || isPaused) return;
+
+                const timer = setInterval(() => {
+                    setRoundTimeLeft(prev => {
+                        if (prev <= 1) {
+                            clearInterval(timer);
+                            handleRoundTimeout();
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+
+                    if (!lockoutA && timeLeftA > 0) setTimeLeftA(prev => prev - 1);
+                    else if (!lockoutA && timeLeftA === 0) handleTimeout('A');
+
+                    if (!lockoutB && timeLeftB > 0) setTimeLeftB(prev => prev - 1);
+                    else if (!lockoutB && timeLeftB === 0) handleTimeout('B');
+                }, 1000);
+
+                return () => clearInterval(timer);
+            }, [gameStatus, lockoutA, lockoutB, timeLeftA, timeLeftB, isPaused]);
+
+            const handleRoundTimeout = () => {
+                if (correctCountA > correctCountB) handleRoundEnd('A', 'points');
+                else if (correctCountB > correctCountA) handleRoundEnd('B', 'points');
+                else {
+                    if (tugPosition > 50) handleRoundEnd('A', 'push');
+                    else if (tugPosition < 50) handleRoundEnd('B', 'push');
+                    else {
+                        alert("DRAW! Restarting Round...");
+                        startRound();
+                    }
+                }
+            };
+
+            const handleTimeout = (team) => {
+                if (team === 'A') {
+                    setLockoutA(true);
+                    setFeedbackA('timeout');
+                    moveTug(-5); 
+                    setTimeout(() => {
+                        setLockoutA(false);
+                        nextQuestion('A');
+                    }, 1000);
+                } else {
+                    setLockoutB(true);
+                    setFeedbackB('timeout');
+                    moveTug(5); 
+                    setTimeout(() => {
+                        setLockoutB(false);
+                        nextQuestion('B');
+                    }, 1000);
+                }
+            };
+
+            useEffect(() => {
+                if (gameStatus === 'playing') {
+                    setCurrentQA(questionsA[0]);
+                    setCurrentQB(questionsB[0]);
+                }
+            }, [gameStatus, questionsA, questionsB]);
+
+            const handleAnswer = (team, selectedOption) => {
+                if (gameStatus !== 'playing' || isPaused) return;
+                
+                const isTeamA = team === 'A';
+                const currentQ = isTeamA ? currentQA : currentQB;
+                const isCorrect = selectedOption === currentQ.a;
+
+                if (isTeamA) {
+                    if (lockoutA) return;
+                    setLockoutA(true); 
+                    
+                    if (isCorrect) {
+                        setFeedbackA('correct');
+                        setCorrectCountA(prev => prev + 1);
+                        moveTug(5); 
+                    } else {
+                        setFeedbackA('wrong');
+                        moveTug(-5); 
+                    }
+                    setTimeout(() => {
+                        setLockoutA(false);
+                        nextQuestion('A');
+                    }, 1000);
+
+                } else {
+                    if (lockoutB) return;
+                    setLockoutB(true);
+
+                    if (isCorrect) {
+                        setFeedbackB('correct');
+                        setCorrectCountB(prev => prev + 1);
+                        moveTug(-5); 
+                    } else {
+                        setFeedbackB('wrong');
+                        moveTug(5); 
+                    }
+                    setTimeout(() => {
+                        setLockoutB(false);
+                        nextQuestion('B');
+                    }, 1000);
+                }
+            };
+
+            const nextQuestion = (team) => {
+                if (team === 'A') {
+                    setFeedbackA(null);
+                    setTimeLeftA(MAX_TIME); 
+                    const remaining = questionsA.slice(1);
+                    if (remaining.length === 0) {
+                        let deck = [...vocabQuestions];
+                        if (isGamePointRound) deck = [...deck, ...MATH_QUESTIONS];
+                        // UPDATED: use prepareDeck to shuffle options
+                        setQuestionsA(prepareDeck(deck));
+                    } else {
+                        setQuestionsA(remaining);
+                        setCurrentQA(remaining[0]);
+                    }
+                } else {
+                    setFeedbackB(null);
+                    setTimeLeftB(MAX_TIME); 
+                    const remaining = questionsB.slice(1);
+                    if (remaining.length === 0) {
+                        let deck = [...vocabQuestions];
+                        if (isGamePointRound) deck = [...deck, ...MATH_QUESTIONS];
+                        // UPDATED: use prepareDeck to shuffle options
+                        setQuestionsB(prepareDeck(deck));
+                    } else {
+                        setQuestionsB(remaining);
+                        setCurrentQB(remaining[0]);
+                    }
+                }
+            };
+
+            const moveTug = (amount) => {
+                setTugPosition(prev => {
+                    const newPos = prev + amount;
+                    if (newPos >= 95) { 
+                        handleRoundEnd('A', 'push');
+                        return 100;
+                    }
+                    if (newPos <= 5) { 
+                        handleRoundEnd('B', 'push');
+                        return 0;
+                    }
+                    return newPos;
+                });
+            };
+
+            const handleRoundEnd = (roundWinner, reason) => {
+                setGameStatus('round_over');
+                setWinner(roundWinner);
+                setWinReason(reason);
+                
+                const newScores = { ...roundScores, [roundWinner]: roundScores[roundWinner] + 1 };
+                setRoundScores(newScores);
+
+                if (newScores[roundWinner] >= WIN_TARGET) {
+                    setTimeout(() => setGameStatus('match_over'), 3000);
+                } else {
+                    setTimeout(() => startRound(newScores), 4000); 
+                }
+            };
+
+            const formatTime = (seconds) => {
+                const m = Math.floor(seconds / 60);
+                const s = seconds % 60;
+                return `${m}:${s < 10 ? '0' : ''}${s}`;
+            };
+
+            // UPDATED: Panic state triggers at 4 steps (20 units) from losing condition (5/95)
+            // Step size is 5. losing at 5. 
+            // 5 + 20 = 25. 95 - 20 = 75.
+            const isDangerA = tugPosition <= 25;
+            const isDangerB = tugPosition >= 75;
+            
+            const scaleA = 1 + (tugPosition - 50) * 0.005;
+            const scaleB = 1 + (50 - tugPosition) * 0.005;
+
+            // --- VIEWS ---
+
+            if (gameStatus === 'intro') {
+                return (
+                    <div className="h-screen w-full flex flex-col items-center justify-center bg-blue-50 pattern-bg font-sans">
+                        <div className="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-2xl border-b-8 border-blue-200">
+                            <h1 className="text-6xl font-black text-blue-600 mb-4 tracking-tight">BATTLE ENGLISH</h1>
+                            <p className="text-xl text-gray-500 mb-8">Vocabulary Battle Arena!</p>
+                            
+                            <div className="flex justify-center items-center gap-8 mb-8">
+                                <div className="p-4 bg-red-100 rounded-2xl w-32">
+                                    <div className="text-2xl font-bold text-red-600">Team A</div>
+                                </div>
+                                <Icons.Swords className="text-slate-400" size={48} />
+                                <div className="p-4 bg-blue-100 rounded-2xl w-32">
+                                    <div className="text-2xl font-bold text-blue-600">Team B</div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 justify-center">
+                                <button 
+                                    onClick={() => setGameStatus('settings')}
+                                    className="p-4 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded-2xl transition-all"
+                                    title="Settings"
+                                >
+                                    <Icons.Settings size={32} />
+                                </button>
+                                <button 
+                                    onClick={startSelection}
+                                    className="px-12 py-4 bg-green-500 hover:bg-green-600 text-white text-3xl font-bold rounded-2xl shadow-[0_6px_0_rgb(21,128,61)] hover:shadow-[0_4px_0_rgb(21,128,61)] active:shadow-none active:translate-y-2 transition-all"
+                                >
+                                    START GAME
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- SETTINGS SCREEN ---
+            if (gameStatus === 'settings') {
+                return (
+                    <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-100 pattern-bg font-sans overflow-y-auto">
+                        <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-lg border-b-8 border-slate-200">
+                            <h2 className="text-3xl font-bold text-slate-700 mb-6 flex items-center gap-2">
+                                <Icons.Settings className="text-blue-500" /> Settings
+                            </h2>
+
+                            <div className="space-y-6">
+                                <button 
+                                    onClick={() => setGameStatus('edit_questions')}
+                                    className="w-full p-4 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-lg flex items-center justify-between transition-colors"
+                                >
+                                    <span>Edit Questions</span>
+                                    <Icons.Edit size={20} />
+                                </button>
+
+                                <div className="bg-slate-50 p-4 rounded-xl">
+                                    <label className="block text-slate-500 font-bold mb-2">Round Duration (Max 5:00)</label>
+                                    <div className="flex gap-4 items-center">
+                                        <div className="flex-1">
+                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">Minutes</label>
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                max="5"
+                                                value={roundDurationMin}
+                                                onChange={(e) => handleDurationChange('min', e.target.value)}
+                                                className="w-full p-3 rounded-lg border-2 border-slate-200 text-2xl font-bold text-center focus:border-blue-500 outline-none"
+                                            />
+                                        </div>
+                                        <span className="text-2xl font-bold text-slate-400 mt-6">:</span>
+                                        <div className="flex-1">
+                                            <label className="text-xs font-bold text-slate-400 uppercase block mb-1">Seconds</label>
+                                            <select 
+                                                value={roundDurationSec}
+                                                onChange={(e) => handleDurationChange('sec', e.target.value)}
+                                                className="w-full p-3 rounded-lg border-2 border-slate-200 text-2xl font-bold text-center focus:border-blue-500 outline-none appearance-none bg-white cursor-pointer"
+                                            >
+                                                <option value="0">00</option>
+                                                <option value="15">15</option>
+                                                <option value="30">30</option>
+                                                <option value="45">45</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button 
+                                    onClick={resetSettings}
+                                    className="w-full p-3 text-red-500 hover:bg-red-50 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
+                                >
+                                    <Icons.RotateCcw size={18} /> Reset to Default
+                                </button>
+
+                                <div className="h-px bg-slate-200 my-4"></div>
+
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={goHome}
+                                        className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-xl font-bold"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        onClick={startSelection}
+                                        className="flex-[2] py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold shadow-[0_4px_0_rgb(21,128,61)] active:translate-y-1 active:shadow-none"
+                                    >
+                                        Finish & Start Game
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- EDIT QUESTIONS SCREEN ---
+            if (gameStatus === 'edit_questions') {
+                return (
+                    <div className="h-screen w-full flex flex-col bg-slate-100 font-sans">
+                        <div className="bg-white p-4 shadow-sm flex items-center justify-between sticky top-0 z-10 gap-4">
+                            <button onClick={() => setGameStatus('settings')} className="flex items-center text-slate-500 font-bold hover:text-slate-700">
+                                <Icons.ChevronLeft /> Back
+                            </button>
+                            
+                            {/* AI Generation Button */}
+                            <button 
+                                onClick={() => setShowAiModal(true)}
+                                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2 transition-colors ml-auto"
+                            >
+                                <Icons.Sparkles size={18} /> Generate with AI
+                            </button>
+
+                            <button 
+                                onClick={() => setGameStatus('settings')}
+                                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm flex items-center gap-2"
+                            >
+                                <Icons.Save size={18} /> Save
+                            </button>
+                        </div>
+
+                        {/* AI Modal */}
+                        {showAiModal && (
+                            <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                                <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                                    <h3 className="text-2xl font-bold text-slate-700 mb-4 flex items-center gap-2">
+                                        <Icons.Sparkles className="text-purple-500" /> AI Generator
+                                    </h3>
+                                    <p className="text-slate-500 mb-4">Enter a topic (e.g., "Space", "Superheroes") and AI will generate a new question set for you.</p>
+                                    <input 
+                                        type="text" 
+                                        value={aiTopic}
+                                        onChange={(e) => setAiTopic(e.target.value)}
+                                        className="w-full p-3 border-2 border-slate-200 rounded-xl mb-4 font-bold focus:border-purple-500 outline-none"
+                                        placeholder="Topic..."
+                                        disabled={isGenerating}
+                                    />
+                                    <div className="flex gap-3">
+                                        <button 
+                                            onClick={() => setShowAiModal(false)}
+                                            className="flex-1 py-3 bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-xl font-bold"
+                                            disabled={isGenerating}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            onClick={generateQuestionsWithGemini}
+                                            disabled={isGenerating || !aiTopic}
+                                            className="flex-1 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            {isGenerating ? <Icons.Loader className="animate-spin-slow" /> : "Generate"}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl mx-auto w-full">
+                            {vocabQuestions.map((q, index) => (
+                                <div key={q.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                                    <div className="flex justify-between mb-2">
+                                        <span className="text-xs font-bold text-slate-400">Question {index + 1} ({q.type === 'mc' ? 'Multiple Choice' : 'True/False'})</span>
+                                    </div>
+                                    
+                                    <input 
+                                        type="text"
+                                        value={q.q}
+                                        onChange={(e) => handleQuestionEdit(q.id, 'q', e.target.value)}
+                                        className="w-full p-2 mb-3 border border-slate-300 rounded-lg font-bold text-slate-700 focus:border-blue-500 outline-none"
+                                        placeholder="Enter question here..."
+                                    />
+
+                                    <div className="grid grid-cols-2 gap-2 mb-3">
+                                        {q.options.map((opt, optIdx) => (
+                                            <input 
+                                                key={optIdx}
+                                                type="text"
+                                                value={opt}
+                                                onChange={(e) => handleQuestionEdit(q.id, 'options', e.target.value, optIdx)}
+                                                className={`w-full p-2 border rounded-lg text-sm ${opt === q.a ? 'border-green-500 bg-green-50' : 'border-slate-200'}`}
+                                                placeholder={`Option ${optIdx + 1}`}
+                                            />
+                                        ))}
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-bold text-slate-500">Correct Answer:</span>
+                                        <select 
+                                            value={q.a}
+                                            onChange={(e) => handleQuestionEdit(q.id, 'a', e.target.value)}
+                                            className="p-2 border border-slate-300 rounded-lg text-sm font-bold text-green-600"
+                                        >
+                                            {q.options.map((opt, i) => (
+                                                <option key={i} value={opt}>{opt}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameStatus === 'select_char') {
+                return (
+                    <div className="h-screen w-full flex flex-col items-center justify-center bg-indigo-50 pattern-bg font-sans">
+                        <div className="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-3xl border-b-8 border-indigo-200">
+                            <h2 className="text-3xl font-bold text-slate-700 mb-2">Select Team Character</h2>
+                            <p className="text-xl text-slate-400 mb-6">
+                                {selectionTurn === 'A' 
+                                    ? <span className="text-red-500 font-bold">Team A, choose your fighter!</span> 
+                                    : <span className="text-blue-500 font-bold">Team B, choose your fighter!</span>}
+                            </p>
+
+                            <div className="grid grid-cols-3 gap-4 mb-8">
+                                {CHARACTERS.map((char) => {
+                                    const isSelectedByA = teamCharA?.id === char.id;
+                                    const isDisabled = isSelectedByA;
+
+                                    return (
+                                        <button
+                                            key={char.id}
+                                            onClick={() => handleCharSelect(char)}
+                                            disabled={isDisabled}
+                                            className={`
+                                                p-6 rounded-2xl text-5xl transition-all border-b-4 flex flex-col items-center gap-2
+                                                ${isDisabled ? 'bg-gray-100 border-gray-200 opacity-30 cursor-not-allowed' : 
+                                                  'bg-white border-slate-200 hover:bg-yellow-50 hover:scale-105 hover:border-yellow-300 active:translate-y-1 active:border-b-0'}
+                                            `}
+                                        >
+                                            <span>{char.icon}</span>
+                                            <span className="text-sm font-bold text-slate-400">{char.name}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            
+            if (gameStatus === 'match_over') {
+                return (
+                    <div className="h-screen w-full flex flex-col items-center justify-center bg-yellow-50 pattern-bg font-sans">
+                        <div className="animate-bounce-custom text-center mb-4 text-yellow-500">
+                            <Icons.Trophy size={64} />
+                        </div>
+                        <h1 className="text-6xl font-black text-yellow-600 mt-4 mb-2">WINNER!</h1>
+                        <h2 className="text-8xl font-black text-gray-800 mb-8">TEAM {winner}</h2>
+                        <div className="text-6xl mb-8">
+                            {winner === 'A' ? teamCharA?.icon : teamCharB?.icon}
+                        </div>
+                        
+                        <div className="text-3xl text-gray-500 font-bold mb-8">
+                            Final Score: {roundScores.A} - {roundScores.B}
+                        </div>
+
+                        <button 
+                            onClick={() => setGameStatus('intro')}
+                            className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white text-xl font-bold rounded-xl shadow-[0_4px_0_rgb(29,78,216)] active:shadow-none active:translate-y-1 transition-all"
+                        >
+                            Back to Menu
+                        </button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="h-screen w-full flex flex-col overflow-hidden bg-slate-100 font-sans relative">
+                    <div className={`absolute top-0 left-0 w-1/2 h-full pointer-events-none z-0 transition-opacity duration-300 ${isDangerA ? 'opacity-100 animate-danger' : 'opacity-0'}`}></div>
+                    <div className={`absolute top-0 right-0 w-1/2 h-full pointer-events-none z-0 transition-opacity duration-300 ${isDangerB ? 'opacity-100 animate-danger' : 'opacity-0'}`}></div>
+
+                    {/* TOP BAR */}
+                    <div className={`h-16 shadow-sm flex items-center justify-between px-8 z-20 relative transition-colors duration-500 ${isGamePointRound ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400'}`}>
+                        <div className="flex flex-col items-start">
+                            <div className="flex gap-2 items-center">
+                                <span className={`font-bold mr-2 ${isGamePointRound ? 'text-white' : 'text-red-500'}`}>Team A</span>
+                                {Array.from({length: WIN_TARGET}).map((_, i) => (
+                                    <div key={`a-${i}`} className={`w-6 h-6 rounded-md border-2 border-white/50 transition-all ${i < roundScores.A ? 'bg-red-500 border-red-500' : 'bg-transparent'}`}></div>
+                                ))}
+                            </div>
+                            <div className="text-xs font-bold opacity-70 mt-1">Score: {correctCountA}</div>
+                        </div>
+                        
+                        <div className="flex flex-col items-center">
+                            <div className={`text-xl font-bold tracking-widest px-4 py-1 rounded-full flex items-center gap-2 ${isPaused ? 'bg-yellow-100 text-yellow-600 border-2 border-yellow-300' : isGamePointRound ? 'bg-white/20 text-white' : 'bg-slate-100'}`}>
+                                {isPaused ? (
+                                    <>
+                                        <Icons.Pause size={20} fill="currentColor" />
+                                        <span>PAUSED</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Icons.Clock size={20} />
+                                        <span>{formatTime(roundTimeLeft)}</span>
+                                    </>
+                                )}
+                            </div>
+                            {isGamePointRound && !isPaused && (
+                                <div className="absolute top-12 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-b-lg shadow-md animate-bounce">
+                                    +15 MATH QUESTIONS
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex flex-col items-end">
+                            <div className="flex gap-2 items-center">
+                                {Array.from({length: WIN_TARGET}).map((_, i) => (
+                                    <div key={`b-${i}`} className={`w-6 h-6 rounded-md border-2 border-white/50 transition-all ${i < roundScores.B ? 'bg-blue-500 border-blue-500' : 'bg-transparent'}`}></div>
+                                ))}
+                                <span className={`font-bold ml-2 ${isGamePointRound ? 'text-white' : 'text-blue-500'}`}>Team B</span>
+                            </div>
+                            <div className="text-xs font-bold opacity-70 mt-1">Score: {correctCountB}</div>
+                        </div>
+                    </div>
+
+                    {/* BATTLE BAR */}
+                    <div className="h-32 bg-slate-50 border-b border-slate-200 flex items-center justify-center relative overflow-hidden shrink-0 z-10">
+                        <div className="w-[80%] h-6 bg-slate-200 rounded-full relative shadow-inner border border-slate-300">
+                            <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-slate-300 transform -translate-x-1/2"></div>
+                            <div 
+                                className="absolute top-1/2 transform -translate-y-1/2 transition-all duration-700 cubic-bezier(0.34, 1.56, 0.64, 1) flex items-center justify-center drop-shadow-2xl"
+                                style={{ left: `${tugPosition}%`, transform: 'translate(-50%, -50%)' }}
+                            >
+                                <div className="relative flex items-center">
+                                    <div 
+                                        style={{ transform: `scale(${scaleA})` }}
+                                        className={`w-20 h-20 rounded-full bg-red-100 border-4 border-red-500 flex items-center justify-center text-4xl z-10 -mr-4 shadow-lg transition-transform duration-700 ${isDangerA ? 'animate-shake' : ''}`}
+                                    >
+                                        {teamCharA?.icon}
+                                    </div>
+                                    <div className="w-10 h-10 rounded-full bg-slate-800 text-white font-bold text-xs flex items-center justify-center z-20 border-2 border-white">
+                                        VS
+                                    </div>
+                                    <div 
+                                        style={{ transform: `scale(${scaleB})` }}
+                                        className={`w-20 h-20 rounded-full bg-blue-100 border-4 border-blue-500 flex items-center justify-center text-4xl z-10 -ml-4 shadow-lg transition-transform duration-700 ${isDangerB ? 'animate-shake' : ''}`}
+                                    >
+                                        {teamCharB?.icon}
+                                    </div>
+                                </div>
+                                {tugPosition > 90 && <div className="absolute left-full ml-4 text-red-600 font-bold whitespace-nowrap animate-pulse text-2xl">PUSH!</div>}
+                                {tugPosition < 10 && <div className="absolute right-full mr-4 text-blue-600 font-bold whitespace-nowrap animate-pulse text-2xl">PUSH!</div>}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* MAIN AREA */}
+                    <div className="flex-1 flex overflow-hidden relative z-10">
+                        
+                        {/* PANEL A */}
+                        <div className={`flex-1 flex flex-col p-4 border-r-2 border-slate-200 transition-colors duration-300 ${feedbackA === 'correct' ? 'bg-green-100' : feedbackA === 'wrong' || feedbackA === 'timeout' ? 'bg-red-100' : 'bg-transparent'} ${isPaused ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                            {gameStatus === 'playing' && !lockoutA && (
+                                 <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4 max-w-md mx-auto overflow-hidden">
+                                    <div className="bg-red-500 h-2.5 rounded-full transition-all duration-1000 ease-linear" style={{ width: `${(timeLeftA / MAX_TIME) * 100}%` }}></div>
+                                </div>
+                            )}
+                            <div className="flex-1 flex flex-col justify-center items-center relative">
+                                 {gameStatus === 'round_over' ? (
+                                    <div className="text-center animate-pulse">
+                                        {winner === 'A' ? (
+                                            <>
+                                                <div className="text-6xl mb-4">👑</div>
+                                                <div className="text-4xl font-bold text-slate-400">ROUND WON!</div>
+                                                {winReason === 'points' && <div className="text-lg text-slate-500 mt-2 font-bold">(Won by Points!)</div>}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="text-6xl mb-4">😢</div>
+                                                <div className="text-4xl font-bold text-slate-400">ROUND LOST</div>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="w-full max-w-lg relative">
+                                        <div className="bg-white p-8 rounded-2xl shadow-lg border-2 border-slate-100 mb-8 min-h-[180px] flex items-center justify-center text-center">
+                                            <h3 className="text-3xl font-bold text-slate-700 leading-snug">{currentQA?.q}</h3>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {currentQA?.options.map((opt, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => handleAnswer('A', opt)}
+                                                    disabled={lockoutA || feedbackA !== null || isPaused}
+                                                    className={`
+                                                        p-5 rounded-xl font-bold text-xl transition-all transform btn-press border-b-4
+                                                        ${lockoutA ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400' : 
+                                                          'bg-white border-slate-200 text-slate-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 active:border-b-0 active:translate-y-1 shadow-sm'
+                                                        }
+                                                    `}
+                                                >
+                                                    {opt}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {feedbackA === 'correct' && (
+                                            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                                                <div className="bg-white rounded-full p-4 shadow-2xl animate-bounce">
+                                                    <Icons.Check size={80} className="text-green-500" strokeWidth={4} />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {(feedbackA === 'wrong' || feedbackA === 'timeout') && (
+                                            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                                                <div className="bg-white rounded-full p-4 shadow-2xl animate-pulse">
+                                                    {feedbackA === 'timeout' 
+                                                        ? <Icons.Clock size={80} className="text-orange-500" strokeWidth={4} />
+                                                        : <Icons.X size={80} className="text-red-500" strokeWidth={4} />
+                                                    }
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* PANEL B */}
+                        <div className={`flex-1 flex flex-col p-4 transition-colors duration-300 ${feedbackB === 'correct' ? 'bg-green-100' : feedbackB === 'wrong' || feedbackB === 'timeout' ? 'bg-red-100' : 'bg-transparent'} ${isPaused ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                             {gameStatus === 'playing' && !lockoutB && (
+                                 <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4 max-w-md mx-auto overflow-hidden">
+                                    <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-1000 ease-linear" style={{ width: `${(timeLeftB / MAX_TIME) * 100}%` }}></div>
+                                </div>
+                            )}
+                            <div className="flex-1 flex flex-col justify-center items-center relative">
+                                {gameStatus === 'round_over' ? (
+                                    <div className="text-center animate-pulse">
+                                        {winner === 'B' ? (
+                                            <>
+                                                <div className="text-6xl mb-4">👑</div>
+                                                <div className="text-4xl font-bold text-slate-400">ROUND WON!</div>
+                                                {winReason === 'points' && <div className="text-lg text-slate-500 mt-2 font-bold">(Won by Points!)</div>}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="text-6xl mb-4">😢</div>
+                                                <div className="text-4xl font-bold text-slate-400">ROUND LOST</div>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="w-full max-w-lg relative">
+                                        <div className="bg-white p-8 rounded-2xl shadow-lg border-2 border-slate-100 mb-8 min-h-[180px] flex items-center justify-center text-center">
+                                            <h3 className="text-3xl font-bold text-slate-700 leading-snug">{currentQB?.q}</h3>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {currentQB?.options.map((opt, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => handleAnswer('B', opt)}
+                                                    disabled={lockoutB || feedbackB !== null || isPaused}
+                                                    className={`
+                                                        p-5 rounded-xl font-bold text-xl transition-all transform btn-press border-b-4
+                                                        ${lockoutB ? 'opacity-50 cursor-not-allowed bg-gray-100 border-gray-200 text-gray-400' : 
+                                                          'bg-white border-slate-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600 active:border-b-0 active:translate-y-1 shadow-sm'
+                                                        }
+                                                    `}
+                                                >
+                                                    {opt}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {feedbackB === 'correct' && (
+                                            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                                                <div className="bg-white rounded-full p-4 shadow-2xl animate-bounce">
+                                                    <Icons.Check size={80} className="text-green-500" strokeWidth={4} />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {(feedbackB === 'wrong' || feedbackB === 'timeout') && (
+                                            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                                                <div className="bg-white rounded-full p-4 shadow-2xl animate-pulse">
+                                                    {feedbackB === 'timeout' 
+                                                        ? <Icons.Clock size={80} className="text-orange-500" strokeWidth={4} />
+                                                        : <Icons.X size={80} className="text-red-500" strokeWidth={4} />
+                                                    }
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* BOTTOM BAR */}
+                    <div className="bg-white py-3 px-8 flex items-center justify-between border-t border-slate-100 z-20 relative shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                        <div className="flex gap-4">
+                             <button 
+                                onClick={goHome}
+                                title="Home (Quit)"
+                                className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+                            >
+                                <Icons.Home size={24} />
+                            </button>
+                            <button 
+                                onClick={togglePause}
+                                title={isPaused ? "Resume" : "Pause"}
+                                className={`p-2 rounded-lg transition-colors ${isPaused ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'}`}
+                            >
+                                {isPaused ? <Icons.Play size={24} fill="currentColor" /> : <Icons.Pause size={24} fill="currentColor" />}
+                            </button>
+                            <button 
+                                onClick={stopGame}
+                                title="Restart Match"
+                                className="p-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-600 transition-colors"
+                            >
+                                <Icons.Square size={24} fill="currentColor" />
+                            </button>
+                        </div>
+                        <div className="text-slate-400 text-sm font-semibold tracking-wide">
+                            Correct answer = PUSH FORWARD • Wrong answer = PULLED BACKWARD
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
